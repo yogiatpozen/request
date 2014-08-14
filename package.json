@@ -41,5 +41,8 @@
   },
   "scripts": {
     "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "tape": "^2.14.0"
   }
 }
