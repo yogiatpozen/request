@@ -10,6 +10,7 @@ var optional = require('./lib/optional')
   , crypto = require('crypto')
   , zlib = require('zlib')
 
+  , bl = require('bl')
   , oauth = optional('oauth-sign')
   , hawk = optional('hawk')
   , aws = optional('aws-sign2')
@@ -29,7 +30,6 @@ var optional = require('./lib/optional')
 
   , copy = require('./lib/copy')
   , debug = require('./lib/debug')
-  , getSafe = require('./lib/getSafe')
   , net = require('net')
   ;
 
@@ -43,22 +43,6 @@ function safeStringify (obj) {
 var globalPool = {}
 var isUrl = /^https?:|^unix:/
 
-
-// Hacky fix for pre-0.4.4 https
-if (https && !https.Agent) {
-  https.Agent = function (options) {
-    http.Agent.call(this, options)
-  }
-  util.inherits(https.Agent, http.Agent)
-  https.Agent.prototype._getConnection = function (host, port, cb) {
-    var s = tls.connect(port, host, this.options, function () {
-      // do other checks here?
-      if (cb) cb()
-    })
-    return s
-  }
-}
-
 function isReadStream (rs) {
   return rs.readable && rs.path && rs.mode;
 }
@@ -69,6 +53,25 @@ function toBase64 (str) {
 
 function md5 (str) {
   return crypto.createHash('md5').update(str).digest('hex')
+}
+
+// Return a simpiler request object to allow serialization
+function requestToJSON() {
+  return {
+    uri: this.uri,
+    method: this.method,
+    headers: this.headers
+  }
+}
+
+// Return a simpiler response object to allow serialization
+function responseToJSON() {
+  return {
+    statusCode: this.statusCode,
+    body: this.body,
+    headers: this.headers,
+    request: requestToJSON.call(this.request)
+  }
 }
 
 function Request (options) {
@@ -761,7 +764,7 @@ Request.prototype.onResponse = function (response) {
 
   self.response = response
   response.request = self
-  response.toJSON = toJSON
+  response.toJSON = responseToJSON
 
   // XXX This is different on 0.10, because SSL is strict by default
   if (self.httpModule === https &&
@@ -952,6 +955,10 @@ Request.prototype.onResponse = function (response) {
       if (!self._ended) self.response.emit('end')
     })
 
+    response.on('end', function () {
+      self._ended = true
+    })
+
     var dataStream
     if (self.gzip) {
       var contentEncoding = response.headers["content-encoding"] || "identity"
@@ -996,17 +1003,17 @@ Request.prototype.onResponse = function (response) {
       self.emit("data", chunk)
     })
     dataStream.on("end", function (chunk) {
-      self._ended = true
       self.emit("end", chunk)
     })
     dataStream.on("close", function () {self.emit("close")})
 
     if (self.callback) {
-      var buffer = []
-      var bodyLen = 0
+      var buffer = bl()
+        , strings = []
+        ;
       self.on("data", function (chunk) {
-        buffer.push(chunk)
-        bodyLen += chunk.length
+        if (Buffer.isBuffer(chunk)) buffer.append(chunk)
+        else strings.push(chunk)
       })
       self.on("end", function () {
         debug('end event', self.uri.href)
@@ -1015,26 +1022,22 @@ Request.prototype.onResponse = function (response) {
           return
         }
 
-        if (buffer.length && Buffer.isBuffer(buffer[0])) {
-          debug('has body', self.uri.href, bodyLen)
-          var body = new Buffer(bodyLen)
-          var i = 0
-          buffer.forEach(function (chunk) {
-            chunk.copy(body, i, 0, chunk.length)
-            i += chunk.length
-          })
+        if (buffer.length) {
+          debug('has body', self.uri.href, buffer.length)
           if (self.encoding === null) {
-            response.body = body
+            // response.body = buffer
+            // can't move to this until https://github.com/rvagg/bl/issues/13
+            response.body = buffer.slice()
           } else {
-            response.body = body.toString(self.encoding)
+            response.body = buffer.toString(self.encoding)
           }
-        } else if (buffer.length) {
+        } else if (strings.length) {
           // The UTF8 BOM [0xEF,0xBB,0xBF] is converted to [0xFE,0xFF] in the JS UTC16/UCS2 representation.
           // Strip this value out when the encoding is set to 'utf8', as upstream consumers won't expect it and it breaks JSON.parse().
-          if (self.encoding === 'utf8' && buffer[0].length > 0 && buffer[0][0] === "\uFEFF") {
-            buffer[0] = buffer[0].substring(1)
+          if (self.encoding === 'utf8' && strings[0].length > 0 && strings[0][0] === "\uFEFF") {
+            strings[0] = strings[0].substring(1)
           }
-          response.body = buffer.join('')
+          response.body = strings.join('')
         }
 
         if (self._json) {
@@ -1389,11 +1392,7 @@ Request.prototype.destroy = function () {
   else if (this.response) this.response.destroy()
 }
 
-function toJSON () {
-  return getSafe(this, '__' + (((1+Math.random())*0x10000)|0).toString(16))
-}
-
-Request.prototype.toJSON = toJSON
+Request.prototype.toJSON = requestToJSON
 
 
 module.exports = Request
