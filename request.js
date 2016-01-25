@@ -999,12 +999,12 @@ Request.prototype.readResponseBody = function (response) {
   self.on('data', function (chunk) {
     if (!charsetEncodingOnPage) {
       encodingFindStr += chunk.toString();
-			var matchesCharsetStr = encodingFindStr.match(/charset\s*=\s*["']([a-zA-Z0-9-_:]*)\s*(?=[;"'])/);
-			if (matchesCharsetStr && matchesCharsetStr.length >= 2) {
-			    charsetEncodingOnPage = matchesCharsetStr[1].trim();
-			    console.log('ENCODING', charsetEncodingOnPage);
-			    encodingFindStr = '';
-			}
+      var matchesCharsetStr = self._tryMatchCharset(encodingFindStr);
+      if (matchesCharsetStr && matchesCharsetStr.length >= 2) {
+        charsetEncodingOnPage = matchesCharsetStr[1].trim();
+        console.log('ENCODING', charsetEncodingOnPage);
+        encodingFindStr = '';
+      }
     }
     if (Buffer.isBuffer(chunk)) {
       buffer.append(chunk)
@@ -1026,12 +1026,10 @@ Request.prototype.readResponseBody = function (response) {
         // can't move to this until https://github.com/rvagg/bl/issues/13
         response.body = buffer.slice()
       } else {
-        if (charsetEncodingOnPage) {
+        if (charsetEncodingOnPage && charsetEncodingOnPage.toLowerCase().replace('-', '') != 'utf8') {
           var iconv = new Iconv(charsetEncodingOnPage, 'utf8//TRANSLIT//IGNORE');
-
-          var resBuf = buffer.slice();
-          response.body = iconv.convert(resBuf).toString();
-          //response.body = encoding.convert(resBuf, 'utf8', charsetEncodingOnPage);
+          response.body = iconv.convert(buffer.slice()).toString();
+          //response.body = encoding.convert(buffer.slice(), 'utf8', charsetEncodingOnPage);
         } else {
           response.body = buffer.toString(self.encoding)
         }
@@ -1058,6 +1056,14 @@ Request.prototype.readResponseBody = function (response) {
     }
     self.emit('complete', response, response.body)
   })
+}
+
+Request.prototype._tryMatchCharset = function(htmlPage) {
+	var html4Pattern = /<meta.*content=.*charset\s*=\s*([a-zA-Z0-9-_:\.]*)\s*(?=["';])/;
+	var html5Pattern = /<meta.*charset\s*=\s*["']\s*([a-zA-Z0-9-_:\.]*)\s*(?=["'])/;
+
+	var match = htmlPage.match(html4Pattern);
+	return (match) ? match : htmlPage.match(html5Pattern);
 }
 
 Request.prototype.abort = function () {
