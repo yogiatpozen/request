@@ -1,20 +1,20 @@
 {
-  "name": "request",
-  "description": "Simplified HTTP request client.",
+  "name": "request-html-charset-fix",
+  "description": "Simplified HTTP request client. !!! I am not the author of this package. I just had fork it to be able to fix charset encoding error while reading non-UTF-8 HTML data.",
   "tags": [
     "http",
     "simple",
     "util",
     "utility"
   ],
-  "version": "2.67.1",
+  "version": "2.67.3",
   "author": "Mikeal Rogers <mikeal.rogers@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/request/request.git"
+    "url": "https://github.com/yogiatpozen/request.git"
   },
   "bugs": {
-    "url": "http://github.com/request/request/issues"
+    "url": "http://github.com/yogiatpozen/request/issues"
   },
   "license": "Apache-2.0",
   "engines": {

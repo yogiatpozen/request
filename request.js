@@ -27,6 +27,9 @@ var http = require('http')
   , Multipart = require('./lib/multipart').Multipart
   , Redirect = require('./lib/redirect').Redirect
   , Tunnel = require('./lib/tunnel').Tunnel
+  , Iconv = require('iconv').Iconv
+  , Buffer = require('buffer').Buffer;
+  //, encoding = require("encoding");
 
 var safeStringify = helpers.safeStringify
   , isReadStream = helpers.isReadStream
@@ -990,7 +993,19 @@ Request.prototype.readResponseBody = function (response) {
   var buffer = bl()
     , strings = []
 
+  var charsetEncodingOnPage = null;
+  var encodingFindStr = '';
+
   self.on('data', function (chunk) {
+    if (!charsetEncodingOnPage) {
+      encodingFindStr += chunk.toString();
+			var matchesCharsetStr = encodingFindStr.match(/charset\s*=\s*["']([a-zA-Z0-9-_:]*)\s*(?=[;"'])/);
+			if (matchesCharsetStr && matchesCharsetStr.length >= 2) {
+			    charsetEncodingOnPage = matchesCharsetStr[1].trim();
+			    console.log('ENCODING', charsetEncodingOnPage);
+			    encodingFindStr = '';
+			}
+    }
     if (Buffer.isBuffer(chunk)) {
       buffer.append(chunk)
     } else {
@@ -1011,7 +1026,15 @@ Request.prototype.readResponseBody = function (response) {
         // can't move to this until https://github.com/rvagg/bl/issues/13
         response.body = buffer.slice()
       } else {
-        response.body = buffer.toString(self.encoding)
+        if (charsetEncodingOnPage) {
+          var iconv = new Iconv(charsetEncodingOnPage, 'utf8//TRANSLIT//IGNORE');
+
+          var resBuf = buffer.slice();
+          response.body = iconv.convert(resBuf).toString();
+          //response.body = encoding.convert(resBuf, 'utf8', charsetEncodingOnPage);
+        } else {
+          response.body = buffer.toString(self.encoding)
+        }
       }
     } else if (strings.length) {
       // The UTF8 BOM [0xEF,0xBB,0xBF] is converted to [0xFE,0xFF] in the JS UTC16/UCS2 representation.
