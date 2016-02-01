@@ -996,6 +996,12 @@ Request.prototype.readResponseBody = function (response) {
   var charsetEncodingOnPage = null;
   var encodingFindStr = '';
 
+  var matchesHeaderCharset = self._tryMatchHeaderCharset(response);
+  if (matchesHeaderCharset && matchesHeaderCharset.length >= 2) {
+    charsetEncodingOnPage = matchesHeaderCharset[1].trim();
+    console.log('ENCODING FROM HEADER', charsetEncodingOnPage);
+  }
+
   self.on('data', function (chunk) {
     if (!charsetEncodingOnPage) {
       encodingFindStr += chunk.toString();
@@ -1029,7 +1035,6 @@ Request.prototype.readResponseBody = function (response) {
         if (charsetEncodingOnPage && charsetEncodingOnPage.toLowerCase().replace('-', '') != 'utf8') {
           var iconv = new Iconv(charsetEncodingOnPage, 'utf8//TRANSLIT//IGNORE');
           response.body = iconv.convert(buffer.slice()).toString();
-          //response.body = encoding.convert(buffer.slice(), 'utf8', charsetEncodingOnPage);
         } else {
           response.body = buffer.toString(self.encoding)
         }
@@ -1056,6 +1061,12 @@ Request.prototype.readResponseBody = function (response) {
     }
     self.emit('complete', response, response.body)
   })
+}
+
+Request.prototype._tryMatchHeaderCharset = function(response) {
+	var contentType = response.headers['content-type'];
+	var headerCharsetPattern = /.*charset=([a-zA-Z0-9-_:\.]*);?.*/;
+	return contentType ? contentType.match(headerCharsetPattern) : null;
 }
 
 Request.prototype._tryMatchCharset = function(htmlPage) {
