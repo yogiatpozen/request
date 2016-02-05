@@ -993,13 +993,14 @@ Request.prototype.readResponseBody = function (response) {
   var buffer = bl()
     , strings = []
 
+  var charsetEncodingOnHeader = null;
   var charsetEncodingOnPage = null;
   var encodingFindStr = '';
 
   var matchesHeaderCharset = self._tryMatchHeaderCharset(response);
   if (matchesHeaderCharset && matchesHeaderCharset.length >= 2) {
-    charsetEncodingOnPage = matchesHeaderCharset[1].trim();
-    console.log('ENCODING FROM HEADER', charsetEncodingOnPage);
+	  charsetEncodingOnHeader = matchesHeaderCharset[1].trim();
+    console.log('ENCODING FROM HEADER', charsetEncodingOnHeader);
   }
 
   self.on('data', function (chunk) {
@@ -1032,8 +1033,14 @@ Request.prototype.readResponseBody = function (response) {
         // can't move to this until https://github.com/rvagg/bl/issues/13
         response.body = buffer.slice()
       } else {
-        if (charsetEncodingOnPage && charsetEncodingOnPage.toLowerCase().replace('-', '') != 'utf8') {
-          var iconv = new Iconv(charsetEncodingOnPage, 'utf8//TRANSLIT//IGNORE');
+		if (charsetEncodingOnHeader || charsetEncodingOnPage) {
+		  var finalEncoding = '';
+		  if (charsetEncodingOnPage) {
+			  finalEncoding = charsetEncodingOnPage;
+		  } else if (charsetEncodingOnHeader) {
+			  finalEncoding = charsetEncodingOnHeader;
+		  }
+          var iconv = new Iconv(finalEncoding, 'utf8//TRANSLIT//IGNORE');
           response.body = iconv.convert(buffer.slice()).toString();
         } else {
           response.body = buffer.toString(self.encoding)
