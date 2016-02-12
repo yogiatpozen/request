@@ -1039,6 +1039,14 @@ Request.prototype.readResponseBody = function (response) {
 		  } else if (charsetEncodingOnHeader) {
 			  finalEncoding = charsetEncodingOnHeader;
 		  }
+		  finalEncoding = finalEncoding.trim();
+
+		  // fix incorrect charset names
+		  switch (finalEncoding.toLowerCase()) {
+			  case 'bg2312': finalEncoding = 'gb2312'; break;
+			  case 'gbk2312': finalEncoding = 'gbk'; break;
+		  }
+
 		  try {
 			  var iconv = new Iconv(finalEncoding, 'utf8//TRANSLIT//IGNORE');
 			  response.body = iconv.convert(buffer.slice()).toString();
