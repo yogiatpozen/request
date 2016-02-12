@@ -1,3 +1,5 @@
+<META http-equiv=Content-Type content="text/html; charset=gb2312">
+
 <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-1">
 <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859_2">
 <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859:3">
@@ -7,8 +9,23 @@
 <meta http-equiv="Content-Type" content="charset=ISO-8859-7;text/html'>
 <meta http-equiv="Content-Type" content="charset=ISO-8859-8">
 
+<META HTTP-EQUIV="cONTENT-tYPE" CONTENT="TEXT/HTML;CHARSET=iso-8859-1">
+<META HTTP-EQUIV="cONTENT-tYPE" CONTENT="TEXT/HTML;CHARSET=iso-8859_2">
+<META HTTP-EQUIV="cONTENT-tYPE" CONTENT="TEXT/HTML;CHARSET=iso-8859:3">
+<META HTTP-EQUIV="cONTENT-tYPE" CONTENT="TEXT/HTML;CHARSET=iso-8859.4">
+<META HTTP-EQUIV="cONTENT-tYPE" CONTENT="TEXT/HTML; CHARSET=iso-8859-5">
+<META HTTP-EQUIV="cONTENT-tYPE" CONTENT="TEXT/HTML; CHARSET=iso-8859-6'>
+<META HTTP-EQUIV="cONTENT-tYPE" CONTENT="CHARSET=iso-8859-7;TEXT/HTML'>
+<META HTTP-EQUIV="cONTENT-tYPE" CONTENT="CHARSET=iso-8859-8">
+
 <meta charset="UTF-8">
 <meta charset='UTF-9'>
 <meta charset="UTF_10">
 <meta charset="UTF:11">
 <meta charset="UTF.12">
+
+<META CHARSET="utf-8">
+<META CHARSET='utf-9'>
+<META CHARSET="utf_10">
+<META CHARSET="utf:11">
+<META CHARSET="utf.12">
