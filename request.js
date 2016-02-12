@@ -1040,8 +1040,13 @@ Request.prototype.readResponseBody = function (response) {
 		  } else if (charsetEncodingOnHeader) {
 			  finalEncoding = charsetEncodingOnHeader;
 		  }
-          var iconv = new Iconv(finalEncoding, 'utf8//TRANSLIT//IGNORE');
-          response.body = iconv.convert(buffer.slice()).toString();
+		  try {
+			  var iconv = new Iconv(finalEncoding, 'utf8//TRANSLIT//IGNORE');
+			  response.body = iconv.convert(buffer.slice()).toString();
+		  } catch (e) {
+			  console.log('Iconv conversion error with charset:', finalEncoding);
+			  throw e;
+		  }
         } else {
           response.body = buffer.toString(self.encoding)
         }
