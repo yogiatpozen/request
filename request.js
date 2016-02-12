@@ -29,7 +29,6 @@ var http = require('http')
   , Tunnel = require('./lib/tunnel').Tunnel
   , Iconv = require('iconv').Iconv
   , Buffer = require('buffer').Buffer;
-  //, encoding = require("encoding");
 
 var safeStringify = helpers.safeStringify
   , isReadStream = helpers.isReadStream
