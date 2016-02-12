@@ -1089,12 +1089,9 @@ Request.prototype._tryMatchHeaderCharset = function(response) {
 	return contentType ? contentType.match(headerCharsetPattern) : null;
 }
 
-Request.prototype._tryMatchCharset = function(htmlPage) {
-	var html4Pattern = /<meta.*content=.*charset\s*=\s*(.*)\s*(?=["';])/i;
-	var html5Pattern = /<meta.*charset\s*=\s*["']\s*(.*)\s*(?=["'])/i;
-
-	var match = htmlPage.match(html4Pattern);
-	return (match) ? match : htmlPage.match(html5Pattern);
+Request.prototype._tryMatchCharset = function(htmlPagePart) {
+	var charsetPattern = /<meta(?!\s*(?:name|value)\s*=)[^>]*?charset\s*=[\s"']*([^\s"'>]*)/i;
+	return htmlPagePart.match(charsetPattern);
 }
 
 Request.prototype.abort = function () {
