@@ -1072,13 +1072,13 @@ Request.prototype.readResponseBody = function (response) {
 
 Request.prototype._tryMatchHeaderCharset = function(response) {
 	var contentType = response.headers['content-type'];
-	var headerCharsetPattern = /.*charset=([a-zA-Z0-9-_:\.]*);?.*/;
+	var headerCharsetPattern = /.*charset=([a-z0-9-_:\.]*);?.*/i;
 	return contentType ? contentType.match(headerCharsetPattern) : null;
 }
 
 Request.prototype._tryMatchCharset = function(htmlPage) {
-	var html4Pattern = /<meta.*content=.*charset\s*=\s*([a-zA-Z0-9-_:\.]*)\s*(?=["';])/;
-	var html5Pattern = /<meta.*charset\s*=\s*["']\s*([a-zA-Z0-9-_:\.]*)\s*(?=["'])/;
+	var html4Pattern = /<meta.*content=.*charset\s*=\s*([a-z0-9-_:\.]*)\s*(?=["';])/i;
+	var html5Pattern = /<meta.*charset\s*=\s*["']\s*([a-z0-9-_:\.]*)\s*(?=["'])/i;
 
 	var match = htmlPage.match(html4Pattern);
 	return (match) ? match : htmlPage.match(html5Pattern);
