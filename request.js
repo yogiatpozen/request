@@ -1082,15 +1082,16 @@ Request.prototype.readResponseBody = function (response) {
   })
 }
 
+// strict charset name match: [a-z0-9-_:\.]
 Request.prototype._tryMatchHeaderCharset = function(response) {
 	var contentType = response.headers['content-type'];
-	var headerCharsetPattern = /.*charset=([a-z0-9-_:\.]*);?.*/i;
+	var headerCharsetPattern = /.*charset=(.*);?.*/i;
 	return contentType ? contentType.match(headerCharsetPattern) : null;
 }
 
 Request.prototype._tryMatchCharset = function(htmlPage) {
-	var html4Pattern = /<meta.*content=.*charset\s*=\s*([a-z0-9-_:\.]*)\s*(?=["';])/i;
-	var html5Pattern = /<meta.*charset\s*=\s*["']\s*([a-z0-9-_:\.]*)\s*(?=["'])/i;
+	var html4Pattern = /<meta.*content=.*charset\s*=\s*(.*)\s*(?=["';])/i;
+	var html5Pattern = /<meta.*charset\s*=\s*["']\s*(.*)\s*(?=["'])/i;
 
 	var match = htmlPage.match(html4Pattern);
 	return (match) ? match : htmlPage.match(html5Pattern);
