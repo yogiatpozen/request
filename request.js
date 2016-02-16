@@ -29,7 +29,6 @@ var http = require('http')
     , Tunnel = require('./lib/tunnel').Tunnel
     , Iconv = require('iconv').Iconv
     , Buffer = require('buffer').Buffer
-    , charsetResponseDetector = require('charset')
     , charsetBodyDetector = require('node-icu-charset-detector');
 
 var safeStringify = helpers.safeStringify
@@ -1001,7 +1000,6 @@ Request.prototype.readResponseBody = function (response) {
   var matchesHeaderCharset = self._tryMatchHeaderCharset(response);
   if (matchesHeaderCharset && matchesHeaderCharset.length >= 2) {
     charsetEncodingOnHeader = matchesHeaderCharset[1].trim();
-    //console.log('ENCODING HEADER:', charsetEncodingOnHeader);
   }
 
   self.on('data', function (chunk) {
@@ -1010,7 +1008,6 @@ Request.prototype.readResponseBody = function (response) {
       var matchesCharsetStr = self._tryMatchCharset(encodingFindStr);
       if (matchesCharsetStr && matchesCharsetStr.length >= 2) {
         charsetEncodingOnPage = matchesCharsetStr[1].trim();
-        //console.log('ENCODING:', charsetEncodingOnPage);
         encodingFindStr = '';
       }
     }
@@ -1029,47 +1026,51 @@ Request.prototype.readResponseBody = function (response) {
     }
 
     if (buffer.length) {
-      console.log('ENCODING HEADER:', charsetEncodingOnHeader);
-      console.log('ENCODING:', charsetEncodingOnPage);
+      var autoDetectCharsetBody = charsetBodyDetector.detectCharset(buffer.slice());
+      var autodetectedCharset = autoDetectCharsetBody.toString();
+      var autodetectedCharsetConfidence = autoDetectCharsetBody.confidence;
 
-      var autoDetectCharsetResp = charsetResponseDetector(response.headers, buffer);
-      console.log('ENCODING RESP/META AUTO DETECT:', autoDetectCharsetResp);
-
-      var autoDetectCharsetBody = charsetBodyDetector.detectCharset(buffer);
-      console.log('ENCODING BODY AUTO DETECT:', autoDetectCharsetBody.toString());
-      console.log('language:', autoDetectCharsetBody.language);
-      console.log('detection confidence: ', autoDetectCharsetBody.confidence);
+      console.log('    self enc:', self.encoding);
+      console.log('  header enc:', charsetEncodingOnHeader);
+      console.log('document enc:', charsetEncodingOnPage);
+      console.log('detected enc:', autodetectedCharset, '(' + autodetectedCharsetConfidence + ')');
 
       debug('has body', self.uri.href, buffer.length)
       if (self.encoding === null) {
         // response.body = buffer
         // can't move to this until https://github.com/rvagg/bl/issues/13
+        console.log('Return body as is');
         response.body = buffer.slice()
+      } else if (self.encoding) {
+        console.log('Return body using self-encoding:', self.encoding);
+        response.body = buffer.toString(self.encoding);
       } else {
-		if (charsetEncodingOnHeader || charsetEncodingOnPage) {
-		  var finalEncoding = '';
-		  if (charsetEncodingOnPage) {
-			  finalEncoding = charsetEncodingOnPage;
-		  } else if (charsetEncodingOnHeader) {
-			  finalEncoding = charsetEncodingOnHeader;
-		  }
-		  finalEncoding = finalEncoding.trim();
-
-		  // fix incorrect charset names
-		  switch (finalEncoding.toLowerCase()) {
-			  case 'bg2312': finalEncoding = 'gb2312'; break;
-			  case 'gbk2312': finalEncoding = 'gbk'; break;
-		  }
-
-		  try {
-			  var iconv = new Iconv(finalEncoding, 'utf8//TRANSLIT//IGNORE');
-			  response.body = iconv.convert(buffer.slice()).toString();
-		  } catch (e) {
-			  console.log('Iconv conversion error with charset:', finalEncoding);
-			  throw e;
-		  }
+        var finalEncoding = '';
+        if (charsetEncodingOnHeader || charsetEncodingOnPage) {
+          // header charset has higher priority
+          if (charsetEncodingOnHeader) {
+            finalEncoding = charsetEncodingOnHeader;
+          } else if (charsetEncodingOnPage) {
+            finalEncoding = charsetEncodingOnPage;
+          }
+          finalEncoding = finalEncoding.trim();
+          // fix incorrect charset names
+          switch (finalEncoding.toLowerCase()) {
+            case 'bg2312': finalEncoding = 'gb2312'; break;
+            case 'gbk2312': finalEncoding = 'gbk'; break;
+          }
         } else {
-          response.body = buffer.toString(self.encoding)
+          // if no charset is set on header & document, set it to auto-detected (no matter what confidence level, we need to use any)
+          finalEncoding = autodetectedCharset;
+        }
+        console.log('USING FINAL ENCODING:', finalEncoding);
+
+        try {
+            var iconv = new Iconv(finalEncoding, 'utf8//TRANSLIT//IGNORE');
+            response.body = iconv.convert(buffer.slice()).toString();
+        } catch (e) {
+            console.log('Iconv conversion error with charset:', finalEncoding);
+            throw e;
         }
       }
     } else if (strings.length) {
