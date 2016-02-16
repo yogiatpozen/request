@@ -1,34 +1,36 @@
 'use strict'
 
 var http = require('http')
-  , https = require('https')
-  , url = require('url')
-  , util = require('util')
-  , stream = require('stream')
-  , zlib = require('zlib')
-  , bl = require('bl')
-  , hawk = require('hawk')
-  , aws = require('aws-sign2')
-  , httpSignature = require('http-signature')
-  , mime = require('mime-types')
-  , stringstream = require('stringstream')
-  , caseless = require('caseless')
-  , ForeverAgent = require('forever-agent')
-  , FormData = require('form-data')
-  , extend = require('extend')
-  , isTypedArray = require('is-typedarray').strict
-  , helpers = require('./lib/helpers')
-  , cookies = require('./lib/cookies')
-  , getProxyFromURI = require('./lib/getProxyFromURI')
-  , Querystring = require('./lib/querystring').Querystring
-  , Har = require('./lib/har').Har
-  , Auth = require('./lib/auth').Auth
-  , OAuth = require('./lib/oauth').OAuth
-  , Multipart = require('./lib/multipart').Multipart
-  , Redirect = require('./lib/redirect').Redirect
-  , Tunnel = require('./lib/tunnel').Tunnel
-  , Iconv = require('iconv').Iconv
-  , Buffer = require('buffer').Buffer;
+    , https = require('https')
+    , url = require('url')
+    , util = require('util')
+    , stream = require('stream')
+    , zlib = require('zlib')
+    , bl = require('bl')
+    , hawk = require('hawk')
+    , aws = require('aws-sign2')
+    , httpSignature = require('http-signature')
+    , mime = require('mime-types')
+    , stringstream = require('stringstream')
+    , caseless = require('caseless')
+    , ForeverAgent = require('forever-agent')
+    , FormData = require('form-data')
+    , extend = require('extend')
+    , isTypedArray = require('is-typedarray').strict
+    , helpers = require('./lib/helpers')
+    , cookies = require('./lib/cookies')
+    , getProxyFromURI = require('./lib/getProxyFromURI')
+    , Querystring = require('./lib/querystring').Querystring
+    , Har = require('./lib/har').Har
+    , Auth = require('./lib/auth').Auth
+    , OAuth = require('./lib/oauth').OAuth
+    , Multipart = require('./lib/multipart').Multipart
+    , Redirect = require('./lib/redirect').Redirect
+    , Tunnel = require('./lib/tunnel').Tunnel
+    , Iconv = require('iconv').Iconv
+    , Buffer = require('buffer').Buffer
+    , charsetResponseDetector = require('charset')
+    , charsetBodyDetector = require('node-icu-charset-detector');
 
 var safeStringify = helpers.safeStringify
   , isReadStream = helpers.isReadStream
@@ -998,8 +1000,8 @@ Request.prototype.readResponseBody = function (response) {
 
   var matchesHeaderCharset = self._tryMatchHeaderCharset(response);
   if (matchesHeaderCharset && matchesHeaderCharset.length >= 2) {
-	  charsetEncodingOnHeader = matchesHeaderCharset[1].trim();
-    console.log('ENCODING FROM HEADER', charsetEncodingOnHeader);
+    charsetEncodingOnHeader = matchesHeaderCharset[1].trim();
+    //console.log('ENCODING HEADER:', charsetEncodingOnHeader);
   }
 
   self.on('data', function (chunk) {
@@ -1008,13 +1010,14 @@ Request.prototype.readResponseBody = function (response) {
       var matchesCharsetStr = self._tryMatchCharset(encodingFindStr);
       if (matchesCharsetStr && matchesCharsetStr.length >= 2) {
         charsetEncodingOnPage = matchesCharsetStr[1].trim();
-        console.log('ENCODING', charsetEncodingOnPage);
+        //console.log('ENCODING:', charsetEncodingOnPage);
         encodingFindStr = '';
       }
     }
     if (Buffer.isBuffer(chunk)) {
       buffer.append(chunk)
     } else {
+      console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! GOT RESPONSE DATA AS STRING');
       strings.push(chunk)
     }
   })
@@ -1026,6 +1029,17 @@ Request.prototype.readResponseBody = function (response) {
     }
 
     if (buffer.length) {
+      console.log('ENCODING HEADER:', charsetEncodingOnHeader);
+      console.log('ENCODING:', charsetEncodingOnPage);
+
+      var autoDetectCharsetResp = charsetResponseDetector(response.headers, buffer);
+      console.log('ENCODING RESP/META AUTO DETECT:', autoDetectCharsetResp);
+
+      var autoDetectCharsetBody = charsetBodyDetector.detectCharset(buffer);
+      console.log('ENCODING BODY AUTO DETECT:', autoDetectCharsetBody.toString());
+      console.log('language:', autoDetectCharsetBody.language);
+      console.log('detection confidence: ', autoDetectCharsetBody.confidence);
+
       debug('has body', self.uri.href, buffer.length)
       if (self.encoding === null) {
         // response.body = buffer
