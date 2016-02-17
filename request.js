@@ -1030,10 +1030,10 @@ Request.prototype.readResponseBody = function (response) {
       var autodetectedCharset = autoDetectCharsetBody.toString().trim().toLowerCase();
       var autodetectedCharsetConfidence = autoDetectCharsetBody.confidence;
 
-      console.log('    self enc:', self.encoding);
-      console.log('  header enc:', charsetEncodingOnHeader);
-      console.log('document enc:', charsetEncodingOnDocument);
-      console.log('detected enc:', autodetectedCharset, '(' + autodetectedCharsetConfidence + ')');
+      //console.log('    self enc:', self.encoding);
+      //console.log('  header enc:', charsetEncodingOnHeader);
+      //console.log('document enc:', charsetEncodingOnDocument);
+      //console.log('detected enc:', autodetectedCharset, '(' + autodetectedCharsetConfidence + ')');
 
       debug('has body', self.uri.href, buffer.length)
       if (self.encoding === null) {
@@ -1084,7 +1084,7 @@ Request.prototype.readResponseBody = function (response) {
           case 'gbk2312': finalEncoding = 'gbk'; break;
         }
 
-        console.log('USING FINAL ENCODING:', finalEncoding);
+        //console.log('USING FINAL ENCODING:', finalEncoding);
 
         try {
             var iconv = new Iconv(finalEncoding, 'utf8//TRANSLIT//IGNORE');
@@ -1095,7 +1095,8 @@ Request.prototype.readResponseBody = function (response) {
               var iconvFallback = new Iconv(autodetectedCharset, 'utf8//TRANSLIT//IGNORE');
               response.body = iconvFallback.convert(buffer.slice()).toString();
             } catch (e1) {
-              console.log('ICONV conversion failed with autodetected charset:', autodetectedCharset, 'Leaving body content AS-IS with default encoding of UTF-8');
+			  console.log('ICONV conversion failed with following params:', 'self.encoding ['+self.encoding+'], header enc ['+charsetEncodingOnHeader+'], document enc ['+charsetEncodingOnDocument+'], detected enc ['+autodetectedCharset+' (' + autodetectedCharsetConfidence + ')]');
+			  console.log('Leaving body content AS-IS with default encoding of UTF-8');
               response.body = buffer.toString();
             }
         }
