@@ -994,20 +994,20 @@ Request.prototype.readResponseBody = function (response) {
     , strings = []
 
   var charsetEncodingOnHeader = null;
-  var charsetEncodingOnPage = null;
+  var charsetEncodingOnDocument = null;
   var encodingFindStr = '';
 
   var matchesHeaderCharset = self._tryMatchHeaderCharset(response);
   if (matchesHeaderCharset && matchesHeaderCharset.length >= 2) {
-    charsetEncodingOnHeader = matchesHeaderCharset[1].trim();
+    charsetEncodingOnHeader = matchesHeaderCharset[1].trim().toLowerCase();
   }
 
   self.on('data', function (chunk) {
-    if (!charsetEncodingOnPage) {
+    if (!charsetEncodingOnDocument) {
       encodingFindStr += chunk.toString();
       var matchesCharsetStr = self._tryMatchCharset(encodingFindStr);
       if (matchesCharsetStr && matchesCharsetStr.length >= 2) {
-        charsetEncodingOnPage = matchesCharsetStr[1].trim();
+        charsetEncodingOnDocument = matchesCharsetStr[1].trim().toLowerCase();
         encodingFindStr = '';
       }
     }
@@ -1027,12 +1027,12 @@ Request.prototype.readResponseBody = function (response) {
 
     if (buffer.length) {
       var autoDetectCharsetBody = charsetBodyDetector.detectCharset(buffer.slice());
-      var autodetectedCharset = autoDetectCharsetBody.toString();
+      var autodetectedCharset = autoDetectCharsetBody.toString().trim().toLowerCase();
       var autodetectedCharsetConfidence = autoDetectCharsetBody.confidence;
 
       console.log('    self enc:', self.encoding);
       console.log('  header enc:', charsetEncodingOnHeader);
-      console.log('document enc:', charsetEncodingOnPage);
+      console.log('document enc:', charsetEncodingOnDocument);
       console.log('detected enc:', autodetectedCharset, '(' + autodetectedCharsetConfidence + ')');
 
       debug('has body', self.uri.href, buffer.length)
@@ -1046,31 +1046,58 @@ Request.prototype.readResponseBody = function (response) {
         response.body = buffer.toString(self.encoding);
       } else {
         var finalEncoding = '';
-        if (charsetEncodingOnHeader || charsetEncodingOnPage) {
-          // header charset has higher priority
+        var charsetConfidenceTreshold = 98;
+
+        if (charsetEncodingOnHeader && charsetEncodingOnDocument) {
+          // if encoding is given on both HTTP header & document
+
+          if (charsetEncodingOnHeader == charsetEncodingOnDocument) {
+            // if they both equal, take one of them
+            finalEncoding = charsetEncodingOnHeader;
+          } else {
+            // if they are different, try to guess best, using auto-detected charset+confidence, but only if confidence is high enough
+            if (autodetectedCharsetConfidence >= charsetConfidenceTreshold) {
+              var headerCharsetConfidence = (charsetEncodingOnHeader == autodetectedCharset) ? autodetectedCharsetConfidence : 0;
+              var documentCharsetConfidence = (charsetEncodingOnDocument == autodetectedCharset) ? autodetectedCharsetConfidence : 0;
+
+              finalEncoding = (headerCharsetConfidence > documentCharsetConfidence ? charsetEncodingOnHeader : charsetEncodingOnDocument);
+            } else {
+              // otherwise just take HTTP header charset as it has priority over document charset
+              finalEncoding = charsetEncodingOnHeader;
+            }
+          }
+        } else if (charsetEncodingOnHeader || charsetEncodingOnDocument) {
+          // header charset first as it has higher priority
           if (charsetEncodingOnHeader) {
             finalEncoding = charsetEncodingOnHeader;
-          } else if (charsetEncodingOnPage) {
-            finalEncoding = charsetEncodingOnPage;
-          }
-          finalEncoding = finalEncoding.trim();
-          // fix incorrect charset names
-          switch (finalEncoding.toLowerCase()) {
-            case 'bg2312': finalEncoding = 'gb2312'; break;
-            case 'gbk2312': finalEncoding = 'gbk'; break;
+          } else {
+            finalEncoding = charsetEncodingOnDocument;
           }
         } else {
           // if no charset is set on header & document, set it to auto-detected (no matter what confidence level, we need to use any)
           finalEncoding = autodetectedCharset;
         }
+
+        // fix incorrect charset names
+        switch (finalEncoding.toLowerCase()) {
+          case 'bg2312': finalEncoding = 'gb2312'; break;
+          case 'gbk2312': finalEncoding = 'gbk'; break;
+        }
+
         console.log('USING FINAL ENCODING:', finalEncoding);
 
         try {
             var iconv = new Iconv(finalEncoding, 'utf8//TRANSLIT//IGNORE');
             response.body = iconv.convert(buffer.slice()).toString();
         } catch (e) {
-            console.log('Iconv conversion error with charset:', finalEncoding);
-            throw e;
+            console.log('ICONV conversion failed with selected charset:', finalEncoding, 'Will try auto-detected:', autodetectedCharset);
+            try {
+              var iconvFallback = new Iconv(autodetectedCharset, 'utf8//TRANSLIT//IGNORE');
+              response.body = iconvFallback.convert(buffer.slice()).toString();
+            } catch (e1) {
+              console.log('ICONV conversion failed with autodetected charset:', autodetectedCharset, 'Leaving body content AS-IS with default encoding of UTF-8');
+              response.body = buffer.toString();
+            }
         }
       }
     } else if (strings.length) {
