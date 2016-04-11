@@ -1007,13 +1007,6 @@ Request.prototype.readResponseBody = function (response) {
     charsetEncodingOnHeader = matchesHeaderCharset[1].trim().toLowerCase();
   }
 
-  if (self.dataTransferTimeout) {
-	self.dataTransferTimer = setTimeout(function(){
-		console.log('RESETTING CONNECTION THAT TOOK TOO LONG TO TRANSFER DATA');
-		response.socket.setTimeout(1);
-	}, self.dataTransferTimeout);
-  }
-
   self.on('data', function (chunk) {
     if (!charsetEncodingOnDocument) {
       encodingFindStr += chunk.toString();
@@ -1031,10 +1024,6 @@ Request.prototype.readResponseBody = function (response) {
     }
   })
   self.on('end', function () {
-	if (self.dataTransferTimer) {
-		clearTimeout(self.dataTransferTimer);
-		self.dataTransferTimer = null;
-	}
     debug('end event', self.uri.href)
     if (self._aborted) {
       debug('aborted', self.uri.href)
